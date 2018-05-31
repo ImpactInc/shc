@@ -47,6 +47,7 @@ class PrimitiveType(f:Option[Field] = None) extends SHCDataType {
 
   def toBytes(input: Any): Array[Byte] = {
     input match {
+      case null => null
       case data: Boolean => Bytes.toBytes(data)
       case data: Byte => Array(data)
       case data: Array[Byte] => data
@@ -55,7 +56,10 @@ class PrimitiveType(f:Option[Field] = None) extends SHCDataType {
       case data: Int => Bytes.toBytes(data)
       case data: Long => Bytes.toBytes(data)
       case data: Short => Bytes.toBytes(data)
+      case data: UTF8String if data.compare(UTF8String.EMPTY_UTF8) == 0 => null
+//      case data: UTF8String if data.getBytes.length == 0 => null
       case data: UTF8String => data.getBytes
+      case data: String if data.isEmpty => null
       case data: String => Bytes.toBytes(data)
       case _ => throw new
           UnsupportedOperationException(s"PrimitiveType coder: unsupported data type $input")

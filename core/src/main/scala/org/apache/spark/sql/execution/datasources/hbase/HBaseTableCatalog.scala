@@ -161,13 +161,14 @@ case class SchemaMap(map: mutable.LinkedHashMap[String, Field]) {
 
 // The definition of HBase and Relation relation schema
 case class HBaseTableCatalog(
-    val namespace: String,
-    val name: String,
-    row: RowKey,
-    sMap: SchemaMap,
-    tCoder: String,
-    coderSet: Set[String],
-    val numReg: Int) extends Logging {
+                              namespace: String,
+                              name: String,
+                              row: RowKey,
+                              sMap: SchemaMap,
+                              tCoder: String,
+                              coderSet: Set[String],
+                              numReg: Int
+                            ) extends Logging {
   def toDataType = StructType(sMap.toFields)
   def getField(name: String) = sMap.getField(name)
   def getRowKey: Seq[Field] = row.fields

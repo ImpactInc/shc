@@ -13,21 +13,15 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * File modified by Hortonworks, Inc. Modifications are also licensed under
- * the Apache Software License, Version 2.0.
  */
 
 package org.apache.spark.sql.execution.datasources.hbase
 
 import java.io._
-
 import scala.util.control.NonFatal
 import scala.xml.XML
-
 import org.json4s.DefaultFormats
 import org.json4s.jackson.JsonMethods._
-
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.client.Put
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable
@@ -43,51 +37,50 @@ import org.apache.spark.sql.execution.datasources.hbase.types.SHCDataTypeFactory
 import org.apache.spark.util.Utils
 
 /**
- * val people = sqlContext.read.format("hbase").load("people")
- */
+  * val people = sqlContext.read.format("hbase").load("people")
+  */
 private[sql] class DefaultSource extends RelationProvider with CreatableRelationProvider {//with DataSourceRegister {
 
   //override def shortName(): String = "hbase"
 
   override def createRelation(
-      sqlContext: SQLContext,
-      parameters: Map[String, String]): BaseRelation = {
+                               sqlContext: SQLContext,
+                               parameters: Map[String, String]): BaseRelation = {
     HBaseRelation(parameters, None)(sqlContext)
   }
 
   override def createRelation(
-    sqlContext: SQLContext,
-    mode: SaveMode,
-    parameters: Map[String, String],
-    data: DataFrame): BaseRelation = {
+                               sqlContext: SQLContext,
+                               mode: SaveMode,
+                               parameters: Map[String, String],
+                               data: DataFrame): BaseRelation = {
     val relation = HBaseRelation(parameters, Some(data.schema))(sqlContext)
     relation.createTableIfNotExist()
-    relation.insert(data, false)
+    relation.insert(data, overwrite = false)
     relation
   }
 }
 
 case class InvalidRegionNumberException(message: String = "", cause: Throwable = null)
-              extends Exception(message, cause) 
+  extends Exception(message, cause)
 
 case class HBaseRelation(
-    parameters: Map[String, String],
-    userSpecifiedschema: Option[StructType]
-  )(@transient val sqlContext: SQLContext)
+                          parameters: Map[String, String],
+                          userSpecifiedschema: Option[StructType]
+                        )(@transient val sqlContext: SQLContext)
   extends BaseRelation with PrunedFilteredScan with InsertableRelation with Logging {
 
-  val timestamp = parameters.get(HBaseRelation.TIMESTAMP).map(_.toLong)
-  val minStamp = parameters.get(HBaseRelation.MIN_STAMP).map(_.toLong)
-  val maxStamp = parameters.get(HBaseRelation.MAX_STAMP).map(_.toLong)
-  val maxVersions = parameters.get(HBaseRelation.MAX_VERSIONS).map(_.toInt)
-  val mergeToLatest = parameters.get(HBaseRelation.MERGE_TO_LATEST).map(_.toBoolean).getOrElse(true)
+  val timestamp: Option[Long] = parameters.get(HBaseRelation.TIMESTAMP).map(_.toLong)
+  val minStamp: Option[Long] = parameters.get(HBaseRelation.MIN_STAMP).map(_.toLong)
+  val maxStamp: Option[Long] = parameters.get(HBaseRelation.MAX_STAMP).map(_.toLong)
+  val maxVersions: Option[Int] = parameters.get(HBaseRelation.MAX_VERSIONS).map(_.toInt)
 
   val catalog = HBaseTableCatalog(parameters)
 
   private val wrappedConf = {
     implicit val formats = DefaultFormats
     val hConf = {
-      val testConf = sqlContext.sparkContext.conf.getBoolean(SparkHBaseConf.testConf, false)
+      val testConf = sqlContext.sparkContext.conf.getBoolean(SparkHBaseConf.testConf, defaultValue = false)
       if (testConf) {
         SparkHBaseConf.conf
       } else {
@@ -149,14 +142,13 @@ case class HBaseRelation(
 
     if (!admin.isTableAvailable(tName)) {
       if (catalog.numReg <= 3) {
-        throw new InvalidRegionNumberException("Creating a new table should " +
+        throw InvalidRegionNumberException("Creating a new table should " +
           "specify the number of regions which must be greater than 3.")
       }
       val tableDesc = new HTableDescriptor(tName)
       cfs.foreach { x =>
         val cf = new HColumnDescriptor(x.getBytes())
         logDebug(s"add family $x to ${catalog.name}")
-        maxVersions.foreach(v => cf.setMaxVersions(v))
         tableDesc.addFamily(cf)
       }
       val startKey = catalog.shcTableCoder.toBytes("aaaaaaa")
@@ -175,55 +167,11 @@ case class HBaseRelation(
     connection.close()
   }
 
-  private def convertToPut(rkFields: Seq[Field])(row: Row) = {
-    val rkIdxedFields: Seq[(Int, Field)] = rkFields.map{ case x =>
-      (schema.fieldIndex(x.colName), x)
-    }
-    val colsIdxedFields = schema
-      .fieldNames
-      .partition( x => rkFields.map(_.colName).contains(x))
-      ._2.map(x => (schema.fieldIndex(x), catalog.getField(x)))
-
-    val coder = catalog.shcTableCoder
-    // construct bytes for row key
-    val rBytes =
-      if (isComposite()) {
-        val rowBytes = coder.encodeCompositeRowKey(rkIdxedFields, row)
-
-        val rLen = rowBytes.foldLeft(0) { case (x, y) =>
-          x + y.length
-        }
-        val rBytes = new Array[Byte](rLen)
-        var offset = 0
-        rowBytes.foreach { x =>
-          System.arraycopy(x, 0, rBytes, offset, x.length)
-          offset += x.length
-        }
-        rBytes
-      } else {
-        val rBytes = rkIdxedFields.map { case (x, y) =>
-          SHCDataTypeFactory.create(y).toBytes(row(x))
-        }
-        rBytes(0)
-      }
-    val put = timestamp.fold(new Put(rBytes))(new Put(rBytes, _))
-    colsIdxedFields.foreach { case (x, y) =>
-      val value = row(x)
-      if(value != null) {
-        put.addColumn(
-          coder.toBytes(y.cf),
-          coder.toBytes(y.col),
-          SHCDataTypeFactory.create(y).toBytes(value))
-      }
-    }
-    (new ImmutableBytesWritable, put)
-  }
-
   /**
-   *
-   * @param data DataFrame to write to hbase
-   * @param overwrite Overwrite existing values
-   */
+    *
+    * @param data DataFrame to write to hbase
+    * @param overwrite Overwrite existing values
+    */
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {
     hbaseConf.set(TableOutputFormat.OUTPUT_TABLE, s"${catalog.namespace}:${catalog.name}")
     val job = Job.getInstance(hbaseConf)
@@ -236,16 +184,58 @@ case class HBaseRelation(
       jobConfig.set("mapreduce.output.fileoutputformat.outputdir", tempDir.getPath + "/outputDataset")
     }
 
+    var count = 0
     val rkFields = catalog.getRowKey
+    val rkIdxedFields = rkFields.map{ x =>
+      (schema.fieldIndex(x.colName), x)
+    }
+    val colsIdxedFields = schema
+      .fieldNames
+      .partition( x => rkFields.map(_.colName).contains(x))
+      ._2.map(x => (schema.fieldIndex(x), catalog.getField(x)))
     val rdd = data.rdd //df.queryExecution.toRdd
+
+    def convertToPut(row: Row) = {
+      val coder = catalog.shcTableCoder
+      // construct bytes for row key
+      val rBytes =
+        if (isComposite()) {
+          val rowBytes = coder.encodeCompositeRowKey(rkIdxedFields, row)
+
+          val rLen = rowBytes.foldLeft(0) { case (x, y) =>
+            x + y.length
+          }
+          val rBytes = new Array[Byte](rLen)
+          var offset = 0
+          rowBytes.foreach { x =>
+            System.arraycopy(x, 0, rBytes, offset, x.length)
+            offset += x.length
+          }
+          rBytes
+        } else {
+          val rBytes = rkIdxedFields.map { case (x, y) =>
+            SHCDataTypeFactory.create(y).toBytes(row(x))
+          }
+          rBytes(0)
+        }
+      val put = timestamp.fold(new Put(rBytes))(new Put(rBytes, _))
+      colsIdxedFields.foreach { case (x, y) =>
+        put.addColumn(
+          coder.toBytes(y.cf),
+          coder.toBytes(y.col),
+          SHCDataTypeFactory.create(y).toBytes(row(x)))
+      }
+      count += 1
+      (new ImmutableBytesWritable, put)
+    }
 
     rdd.mapPartitions(iter => {
       SHCCredentialsManager.processShcToken(serializedToken)
-      iter.map(convertToPut(rkFields))
+      iter.map(convertToPut)
     }).saveAsNewAPIHadoopDataset(jobConfig)
   }
 
-  def rows = catalog.row
+  def rows: RowKey = catalog.row
 
   def singleKey = {
     rows.fields.size == 1
@@ -326,7 +316,6 @@ object HBaseRelation {
   val TIMESTAMP = "timestamp"
   val MIN_STAMP = "minStamp"
   val MAX_STAMP = "maxStamp"
-  val MERGE_TO_LATEST = "mergeToLatest"
   val MAX_VERSIONS = "maxVersions"
   val HBASE_CONFIGURATION = "hbaseConfiguration"
   // HBase configuration file such as HBase-site.xml, core-site.xml

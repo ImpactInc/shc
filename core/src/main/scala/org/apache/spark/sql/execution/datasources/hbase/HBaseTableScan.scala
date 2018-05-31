@@ -311,7 +311,7 @@ private[hbase] class HBaseTableScanRDD(
     }
     val size = sparkConf.getInt(SparkHBaseConf.CachingSize, SparkHBaseConf.defaultCachingSize)
     scan.setCaching(size)
-    filter.foreach(scan.setFilter(_))
+    filter.foreach(scan.setFilter)
     scan
   }
 
@@ -331,7 +331,7 @@ private[hbase] class HBaseTableScanRDD(
             relation.catalog.shcTableCoder.toBytes(c.cf),
             relation.catalog.shcTableCoder.toBytes(c.col))
         }
-        filter.foreach(g.setFilter(_))
+        filter.foreach(g.setFilter)
         gets.add(g)
       }
       val tmp = tbr.get(gets)
@@ -373,18 +373,14 @@ private[hbase] class HBaseTableScanRDD(
       val scanner = tableResource.getScanner(scan)
       rddResources.addResource(scanner)
       scanner
-    }.map(toResultIterator(_))
+    }.map(toResultIterator)
 
     val rIt = sIts.fold(Iterator.empty: Iterator[Result]){ case (x, y) =>
       x ++ y
     } ++ gIt
 
     ShutdownHookManager.addShutdownHook { () => HBaseConnectionCache.close() }
-    if(relation.mergeToLatest) {
-      toRowIterator(rIt)
-    } else {
-      toFlattenRowIterator(rIt)
-    }
+    toRowIterator(rIt)
   }
 
   private def handleTimeSemantics(query: Query): Unit = {
@@ -415,7 +411,7 @@ case class RDDResources(set: mutable.HashSet[Resource]) {
     set += s
   }
   def release() {
-    set.foreach(release(_))
+    set.foreach(release)
   }
   def release(rs: Resource) {
     try {
