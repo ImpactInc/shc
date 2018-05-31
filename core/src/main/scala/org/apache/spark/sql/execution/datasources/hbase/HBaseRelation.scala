@@ -220,10 +220,14 @@ case class HBaseRelation(
         }
       val put = timestamp.fold(new Put(rBytes))(new Put(rBytes, _))
       colsIdxedFields.foreach { case (x, y) =>
-        put.addColumn(
-          coder.toBytes(y.cf),
-          coder.toBytes(y.col),
-          SHCDataTypeFactory.create(y).toBytes(row(x)))
+        val rowValue = SHCDataTypeFactory.create(y).toBytes(row(x))
+        if (rowValue != null) {
+          put.addColumn(
+            coder.toBytes(y.cf),
+            coder.toBytes(y.col),
+            rowValue
+          )
+        }
       }
       count += 1
       (new ImmutableBytesWritable, put)
