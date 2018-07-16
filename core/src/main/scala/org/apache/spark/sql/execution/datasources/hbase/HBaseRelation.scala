@@ -120,22 +120,10 @@ case class HBaseRelation(
     val connection = HBaseConnectionCache.getConnection(hbaseConf)
     // Initialize hBase table if necessary
     val admin = connection.getAdmin
-    val isNameSpaceExist = try {
-      admin.getNamespaceDescriptor(catalog.namespace)
-      true
-    } catch {
-      case e: NamespaceNotFoundException => false
-      case NonFatal(e) =>
-        logError("Unexpected error", e)
-        false
-    }
-    if (!isNameSpaceExist) {
-      admin.createNamespace(NamespaceDescriptor.create(catalog.namespace).build)
-    }
-    val tName = TableName.valueOf(s"${catalog.namespace}:${catalog.name}")
+    val tName = TableName.valueOf(catalog.name)
     // The names of tables which are created by the Examples has prefix "shcExample"
     if (admin.isTableAvailable(tName)
-      && tName.toString.startsWith(s"${catalog.namespace}:shcExample")){
+      && tName.toString.startsWith("shcExample")){
       admin.disableTable(tName)
       admin.deleteTable(tName)
     }
@@ -173,7 +161,7 @@ case class HBaseRelation(
     * @param overwrite Overwrite existing values
     */
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {
-    hbaseConf.set(TableOutputFormat.OUTPUT_TABLE, s"${catalog.namespace}:${catalog.name}")
+    hbaseConf.set(TableOutputFormat.OUTPUT_TABLE, s"${catalog.name}")
     val job = Job.getInstance(hbaseConf)
     job.setOutputFormatClass(classOf[TableOutputFormat[String]])
 
