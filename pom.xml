@@ -34,7 +34,7 @@
   <url>https://github.com/hortonworks-spark/shc</url>
 
   <properties>
-    <bigtable.version>1.0.0</bigtable.version>
+    <bigtable.version>1.2.0</bigtable.version>
     <spark.version>2.2.1</spark.version>
     <hbase.version>1.2.0</hbase.version>
     <phoenix.version>4.9.0-HBase-1.1</phoenix.version>
@@ -43,7 +43,7 @@
     <scala.version>2.11.12</scala.version>
     <scala.macros.version>2.1.0</scala.macros.version>
     <scala.binary.version>2.11</scala.binary.version>
-    <avro.version>1.7.6</avro.version>
+    <avro.version>1.8.0</avro.version>
     <codahale.metrics.version>3.0.0</codahale.metrics.version>
     <codehaus.jackson.version>1.8.8</codehaus.jackson.version>
 
