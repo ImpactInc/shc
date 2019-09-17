@@ -18,9 +18,10 @@
 package org.apache.spark.sql.execution.datasources.hbase
 
 import java.io._
+
 import scala.util.control.NonFatal
 import scala.xml.XML
-import org.json4s.DefaultFormats
+import org.json4s.{DefaultFormats, Formats}
 import org.json4s.jackson.JsonMethods._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.client.Put
@@ -33,7 +34,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SQLContext, SaveMode}
-import org.apache.spark.sql.execution.datasources.hbase.types.SHCDataTypeFactory
+import org.apache.spark.sql.execution.datasources.hbase.types.{SHCDataType, SHCDataTypeFactory}
 import org.apache.spark.util.Utils
 
 /**
@@ -75,10 +76,11 @@ case class HBaseRelation(
   val maxStamp: Option[Long] = parameters.get(HBaseRelation.MAX_STAMP).map(_.toLong)
   val maxVersions: Option[Int] = parameters.get(HBaseRelation.MAX_VERSIONS).map(_.toInt)
 
+
   val catalog = HBaseTableCatalog(parameters)
 
   private val wrappedConf = {
-    implicit val formats = DefaultFormats
+    implicit val formats: Formats = DefaultFormats
     val hConf = {
       val testConf = sqlContext.sparkContext.conf.getBoolean(SparkHBaseConf.testConf, defaultValue = false)
       if (testConf) {
@@ -111,9 +113,9 @@ case class HBaseRelation(
     new SerializableConfiguration(hConf)
   }
 
-  def hbaseConf = wrappedConf.value
+  def hbaseConf: Configuration = wrappedConf.value
 
-  val serializedToken = SHCCredentialsManager.manager.getTokenForCluster(hbaseConf)
+  val serializedToken: Array[Byte] = SHCCredentialsManager.manager.getTokenForCluster(hbaseConf)
 
   def createTableIfNotExist() {
     val cfs = catalog.getColumnFamilies
@@ -239,6 +241,93 @@ case class HBaseRelation(
     }).saveAsNewAPIHadoopDataset(jobConfig)
   }
 
+  override def insert(data: DataFrame, overwrite: Boolean): Unit = {
+    hbaseConf.set(TableOutputFormat.OUTPUT_TABLE, s"${catalog.namespace}:${catalog.name}")
+    val job = Job.getInstance(hbaseConf)
+    job.setOutputFormatClass(classOf[TableOutputFormat[String]])
+
+    // This is a workaround for SPARK-21549. After it is fixed, the snippet can be removed.
+    val jobConfig = job.getConfiguration
+    val tempDir = Utils.createTempDir()
+    if (jobConfig.get("mapreduce.output.fileoutputformat.outputdir") == null) {
+      jobConfig.set("mapreduce.output.fileoutputformat.outputdir", tempDir.getPath + "/outputDataset")
+    }
+
+    val rdd = data.rdd //df.queryExecution.toRdd
+
+    rdd.mapPartitions(iter => {
+      SHCCredentialsManager.processShcToken(serializedToken)
+      iter.map(convertToPut(catalog.getRowKey))
+    }).saveAsNewAPIHadoopDataset(jobConfig)
+  }
+
+  private def convertToPut(rkFields: Seq[Field] )(row: Row): (ImmutableBytesWritable, Put) = {
+    val rkIdxedFields = rkFields.map{ case x =>
+      (schema.fieldIndex(x.colName), x)
+    }
+    val colsIdxedFields = schema
+      .fieldNames
+      .partition( x => rkFields.map(_.colName).contains(x))
+      ._2.map(x => (schema.fieldIndex(x), catalog.getField(x)))
+    val coder: SHCDataType = catalog.shcTableCoder
+
+    // construct bytes for row key
+    val rBytes: Array[Byte] =
+      if (isComposite()) {
+        val rowBytes = coder.encodeCompositeRowKey(rkIdxedFields, row)
+
+        val rLen = rowBytes.foldLeft(0) { case (x, y) =>
+          x + y.length
+        }
+        val rBytes = new Array[Byte](rLen)
+        var offset = 0
+        rowBytes.foreach { x =>
+          System.arraycopy(x, 0, rBytes, offset, x.length)
+          offset += x.length
+        }
+        rBytes
+      } else {
+        rkIdxedFields.map { case (x, y) =>
+          SHCDataTypeFactory.create(y).toBytes(row(x))
+        }.head
+      }
+
+    // add timestamp if defined for whole table
+    val put: Put = timestamp.fold(new Put(rBytes))(new Put(rBytes, _))
+
+    colsIdxedFields.foreach { case (index, field) =>
+      val dataType = SHCDataTypeFactory.create(field)
+      def addColumnWithTime(col: String)(ts: Long, value: Any) = if(value != null) {
+        put.addColumn(coder.toBytes(field.cf), coder.toBytes(col), ts, dataType.toBytes(value))
+      }
+      def addColumn(col: String, value: Any) = if(value != null) {
+        put.addColumn(coder.toBytes(field.cf), coder.toBytes(col), dataType.toBytes(value))
+      }
+      field.dt match {
+        case MapType(keyType, valueType, _) =>
+          keyType match {
+            case StringType =>
+              valueType match {
+                case MapType(LongType, _, _) =>
+                  row(index).asInstanceOf[Map[String, Map[Long, Any]]]
+                    .foreach{ case (col, versions) =>
+                      versions.foreach((addColumnWithTime(col) _).tupled)
+                    }
+                case _ =>
+                  row(index).asInstanceOf[Map[String, Any]]
+                    .foreach((addColumn _).tupled)
+              }
+            case LongType =>
+              row(index).asInstanceOf[Map[Long, Any]]
+                .foreach((addColumnWithTime(field.col) _).tupled)
+          }
+        case _ =>
+          addColumn(field.col, row(index))
+      }
+    }
+    (new ImmutableBytesWritable, put)
+  }
+
   def rows: RowKey = catalog.row
 
   def singleKey = {
@@ -275,11 +364,11 @@ case class HBaseRelation(
   }
 
   def getIndexedProjections(requiredColumns: Array[String]): Seq[(Field, Int)] = {
-    requiredColumns.map(catalog.sMap.getField(_)).zipWithIndex
+    requiredColumns.map(catalog.sMap.getField).zipWithIndex
   }
   // Retrieve all columns we will return in the scanner
   def splitRowKeyColumns(requiredColumns: Array[String]): (Seq[Field], Seq[Field]) = {
-    val (l, r) = requiredColumns.map(catalog.sMap.getField(_)).partition(_.cf == HBaseTableCatalog.rowKey)
+    val (l, r) = requiredColumns.map(catalog.sMap.getField).partition(_.cf == HBaseTableCatalog.rowKey)
     (l, r)
   }
 
