@@ -20,9 +20,8 @@
 
 package org.apache.spark.sql.execution.datasources.hbase
 
+import java.{lang, util}
 import java.util.ArrayList
-
-import scala.collection.mutable
 
 import org.apache.hadoop.hbase.CellUtil
 import org.apache.hadoop.hbase.client._
@@ -32,27 +31,30 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.execution.datasources.hbase
 import org.apache.spark.sql.execution.datasources.hbase.HBaseResources._
+import org.apache.spark.sql.execution.datasources.hbase.types.{SHCDataType, SHCDataTypeFactory}
 import org.apache.spark.sql.sources.Filter
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types._
 import org.apache.spark.util.ShutdownHookManager
-import org.apache.spark.sql.execution.datasources.hbase.types.SHCDataTypeFactory
+
+import scala.collection.mutable
+import scala.util.matching.Regex
 
 private[hbase] case class HBaseRegion(
-    override val index: Int,
-    start: Option[HBaseType] = None,
-    end: Option[HBaseType] = None,
-    server: Option[String] = None) extends Partition
+                                       override val index: Int,
+                                       start: Option[HBaseType] = None,
+                                       end: Option[HBaseType] = None,
+                                       server: Option[String] = None) extends Partition
 
 private[hbase] case class HBaseScanPartition(
-    override val index: Int,
-    regions: HBaseRegion,
-    scanRanges: Array[ScanRange[Array[Byte]]],
-    tf: SerializedTypedFilter) extends Partition
+                                              override val index: Int,
+                                              regions: HBaseRegion,
+                                              scanRanges: Array[ScanRange[Array[Byte]]],
+                                              tf: SerializedTypedFilter) extends Partition
 
 private[hbase] class HBaseTableScanRDD(
-    relation: HBaseRelation,
-    requiredColumns: Array[String],
-    filters: Array[Filter]) extends RDD[Row](relation.sqlContext.sparkContext, Nil) {
+                                        relation: HBaseRelation,
+                                        requiredColumns: Array[String],
+                                        filters: Array[Filter]) extends RDD[Row](relation.sqlContext.sparkContext, Nil) {
   val outputs = StructType(requiredColumns.map(relation.schema(_))).toAttributes
   val columnFields = relation.splitRowKeyColumns(requiredColumns)._2
   private def sparkConf = SparkEnv.get.conf
@@ -86,8 +88,94 @@ private[hbase] class HBaseTableScanRDD(
     ps.asInstanceOf[Array[Partition]]
   }
 
+  private def extractKey(s: String, r: Regex): Option[String] = s match {
+    case r() => Some("")
+    case r(x) => Some(x)
+    case _ => None
+  }
+
+  private def containsDynamic(dt: DataType): Boolean = dt match {
+    case m: MapType => m.keyType.isInstanceOf[StringType.type]
+    case _ => false
+  }
+
+  private def getInternalValueType(dt: DataType): Option[DataType] = dt match {
+    case m: MapType => Some(m.valueType)
+    case _ => None
+  }
+
+  private def keepVersions(dt: DataType): Boolean = dt match {
+    case m: MapType => m.keyType.isInstanceOf[LongType.type]
+    case _ => false
+  }
+
+
   // TODO: It is a big performance overhead, as for each row, there is a hashmap lookup.
   def buildRow(fields: Seq[Field], result: Result): Row = {
+
+    val r = result.getRow
+
+    val keySeq = {
+      if (relation.isComposite()) {
+        relation.catalog.shcTableCoder
+          .decodeCompositeRowKey(r, relation.catalog.getRowKey)
+      } else {
+        val f = relation.catalog.getRowKey.head
+        Seq((f, SHCDataTypeFactory.create(f).fromBytes(r))).toMap
+      }
+    }
+
+    import scala.collection.JavaConverters.mapAsScalaMapConverter
+    val scalaMap = result.getMap.asScala
+
+    val valuesSeq = scalaMap.flatMap { case (cf, columns) =>
+
+      val cfName = relation.catalog.shcTableCoder.fromBytes(cf).toString
+      val cfFields = fields.filter(_.cf == cfName)
+      val scalaColumns = columns.asScala
+
+      cfFields.map{ f =>
+        val dataType: SHCDataType = SHCDataTypeFactory.create(f)
+        if (f.col.isEmpty && containsDynamic(f.dt)) {
+
+          val m = scalaColumns.map { case (q, versions) =>
+            val pq = relation.catalog.shcTableCoder.fromBytes(q).toString
+            val v = if(getInternalValueType(f.dt).exists(keepVersions)) {
+              versions.asScala.mapValues(dataType.fromBytes)
+            } else {
+              dataType.fromBytes(versions.firstEntry().getValue)
+            }
+            pq -> v
+          }
+          cfFields.foreach(f => m.remove(f.col))
+          f -> m.toMap
+
+        } else {
+
+          val pq = relation.catalog.shcTableCoder.toBytes(f.col)
+          val timeseries = scalaColumns.get(pq)
+          val v = if(keepVersions(f.dt)) {
+            timeseries.map(_.asScala.mapValues(dataType.fromBytes))
+          } else {
+            timeseries.map(ver => dataType.fromBytes(ver.firstEntry().getValue))
+          }.getOrElse(null)
+          f -> v
+
+        }
+      }.toMap
+    }
+
+    val unioned = keySeq ++ valuesSeq
+
+    //     Return the row ordered by the requested order
+    val ordered = fields.map(unioned.getOrElse(_, null))
+    val additional = unioned.filterNot { case (f, _) => fields.contains(f) }.values
+    val unstructured = ordered ++ additional
+    Row.fromSeq(unstructured)
+  }
+
+  // TODO: It is a big performance overhead, as for each row, there is a hashmap lookup.
+  def buildRowOld(fields: Seq[Field], result: Result): Row = {
     val r = result.getRow
     val keySeq = {
       if (relation.isComposite()) {
@@ -99,21 +187,32 @@ private[hbase] class HBaseTableScanRDD(
       }
     }
 
-    val valueSeq = fields.filter(!_.isRowKey).map { x =>
-      val kv = result.getColumnLatestCell(
-        relation.catalog.shcTableCoder.toBytes(x.cf),
-        relation.catalog.shcTableCoder.toBytes(x.col))
-      if (kv == null || kv.getValueLength == 0) {
-        (x, null)
-      } else {
-        val v = CellUtil.cloneValue(kv)
-        (x, SHCDataTypeFactory.create(x).fromBytes(v))
-      }
-    }.toMap
+    import scala.collection.JavaConverters.mapAsScalaMapConverter
+    val scalaMap = result.getNoVersionMap.asScala
 
-    val unioned = keySeq ++ valueSeq
-    // Return the row ordered by the requested order
-    Row.fromSeq(fields.map(unioned.get(_).getOrElse(null)))
+    val valuesSeq = scalaMap.flatMap { case (cf, columns) =>
+
+      val cfName = relation.catalog.shcTableCoder.fromBytes(cf).toString
+      val cfFields = fields.filter(_.cf == cfName)
+      val scalaColumns = columns.asScala
+
+      cfFields.map(f => {
+        val dataType = SHCDataTypeFactory.create(f)
+        val m: Map[String, Any] = scalaColumns.flatMap { case (q, value) =>
+          val pq = relation.catalog.shcTableCoder.fromBytes(q).toString
+          extractKey(pq, new Regex(f.col)).map(_ -> dataType.fromBytes(value))
+        }.toMap
+        m.get("").map(f -> _).getOrElse(f -> m)
+      }).toMap
+    }
+
+    val unioned = keySeq ++ valuesSeq
+
+    //     Return the row ordered by the requested order
+    val ordered = fields.map(unioned.getOrElse(_, null))
+    val additional = unioned.filterNot { case (f, _) => fields.contains(f) }.values
+    val unstructured = ordered ++ additional
+    Row.fromSeq(unstructured)
   }
 
   // TODO: It is a big performance overhead, as for each row, there is a hashmap lookup.
@@ -204,7 +303,7 @@ private[hbase] class HBaseTableScanRDD(
   }
 
   private def toRowIterator(
-      it: Iterator[Result]): Iterator[Row] = {
+                             it: Iterator[Result]): Iterator[Row] = {
 
     val iterator = new Iterator[Row] {
       val start         = System.currentTimeMillis()
@@ -236,7 +335,7 @@ private[hbase] class HBaseTableScanRDD(
     * This solution stand for fetching more than one version
     */
   private def toFlattenRowIterator(
-      it: Iterator[Result]): Iterator[Row] = {
+                                    it: Iterator[Result]): Iterator[Row] = {
 
     val iterator = new Iterator[Row] {
       val start = System.currentTimeMillis()
@@ -289,9 +388,9 @@ private[hbase] class HBaseTableScanRDD(
   }
 
   private def buildScan(
-      start: Option[HBaseType],
-      end: Option[HBaseType],
-      columns: Seq[Field], filter: Option[HFilter]): Scan = {
+                         start: Option[HBaseType],
+                         end: Option[HBaseType],
+                         columns: Seq[Field], filter: Option[HFilter]): Scan = {
     val scan = {
       (start, end) match {
         case (Some(lb), Some(ub)) => new Scan(lb, ub)
@@ -304,22 +403,29 @@ private[hbase] class HBaseTableScanRDD(
 
     // set fetch size
     // scan.setCaching(scannerFetchSize)
-    columns.foreach{ c =>
-      scan.addColumn(
-        relation.catalog.shcTableCoder.toBytes(c.cf),
-        relation.catalog.shcTableCoder.toBytes(c.col))
+    if(relation.restrictive == HBaseRelation.Restrictive.column) {
+      columns.foreach { c =>
+        scan.addColumn(
+          relation.catalog.shcTableCoder.toBytes(c.cf),
+          relation.catalog.shcTableCoder.toBytes(c.col))
+      }
+    } else if (relation.restrictive == HBaseRelation.Restrictive.family) {
+      columns.foreach { c =>
+        scan.addFamily(relation.catalog.shcTableCoder.toBytes(c.cf))
+      }
     }
+
     val size = sparkConf.getInt(SparkHBaseConf.CachingSize, SparkHBaseConf.defaultCachingSize)
     scan.setCaching(size)
-    filter.foreach(scan.setFilter)
+    filter.foreach(scan.setFilter(_))
     scan
   }
 
   private def buildGets(
-      tbr: TableResource,
-      g: Array[ScanRange[Array[Byte]]],
-      columns: Seq[Field],
-      filter: Option[HFilter]): Iterator[Result] = {
+                         tbr: TableResource,
+                         g: Array[ScanRange[Array[Byte]]],
+                         columns: Seq[Field],
+                         filter: Option[HFilter]): Iterator[Result] = {
     val size = sparkConf.getInt(SparkHBaseConf.BulkGetSize, SparkHBaseConf.defaultBulkGetSize)
     g.grouped(size).flatMap{ x =>
       val gets = new ArrayList[Get]()
@@ -331,7 +437,7 @@ private[hbase] class HBaseTableScanRDD(
             relation.catalog.shcTableCoder.toBytes(c.cf),
             relation.catalog.shcTableCoder.toBytes(c.col))
         }
-        filter.foreach(g.setFilter)
+        filter.foreach(g.setFilter(_))
         gets.add(g)
       }
       val tmp = tbr.get(gets)
@@ -373,14 +479,18 @@ private[hbase] class HBaseTableScanRDD(
       val scanner = tableResource.getScanner(scan)
       rddResources.addResource(scanner)
       scanner
-    }.map(toResultIterator)
+    }.map(toResultIterator(_))
 
     val rIt = sIts.fold(Iterator.empty: Iterator[Result]){ case (x, y) =>
       x ++ y
     } ++ gIt
 
     ShutdownHookManager.addShutdownHook { () => HBaseConnectionCache.close() }
-    toRowIterator(rIt)
+    if(relation.mergeToLatest) {
+      toRowIterator(rIt)
+    } else {
+      toFlattenRowIterator(rIt)
+    }
   }
 
   private def handleTimeSemantics(query: Query): Unit = {
@@ -411,7 +521,7 @@ case class RDDResources(set: mutable.HashSet[Resource]) {
     set += s
   }
   def release() {
-    set.foreach(release)
+    set.foreach(release(_))
   }
   def release(rs: Resource) {
     try {

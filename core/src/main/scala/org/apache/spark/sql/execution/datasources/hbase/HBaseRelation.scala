@@ -169,78 +169,6 @@ case class HBaseRelation(
     connection.close()
   }
 
-  /**
-    *
-    * @param data DataFrame to write to hbase
-    * @param overwrite Overwrite existing values
-    */
-  override def insert(data: DataFrame, overwrite: Boolean): Unit = {
-    hbaseConf.set(TableOutputFormat.OUTPUT_TABLE, s"${catalog.namespace}:${catalog.name}")
-    val job = Job.getInstance(hbaseConf)
-    job.setOutputFormatClass(classOf[TableOutputFormat[String]])
-
-    // This is a workaround for SPARK-21549. After it is fixed, the snippet can be removed.
-    val jobConfig = job.getConfiguration
-    val tempDir = Utils.createTempDir()
-    if (jobConfig.get("mapreduce.output.fileoutputformat.outputdir") == null) {
-      jobConfig.set("mapreduce.output.fileoutputformat.outputdir", tempDir.getPath + "/outputDataset")
-    }
-
-    var count = 0
-    val rkFields = catalog.getRowKey
-    val rkIdxedFields = rkFields.map{ x =>
-      (schema.fieldIndex(x.colName), x)
-    }
-    val colsIdxedFields = schema
-      .fieldNames
-      .partition( x => rkFields.map(_.colName).contains(x))
-      ._2.map(x => (schema.fieldIndex(x), catalog.getField(x)))
-    val rdd = data.rdd //df.queryExecution.toRdd
-
-    def convertToPut(row: Row) = {
-      val coder = catalog.shcTableCoder
-      // construct bytes for row key
-      val rBytes =
-        if (isComposite()) {
-          val rowBytes = coder.encodeCompositeRowKey(rkIdxedFields, row)
-
-          val rLen = rowBytes.foldLeft(0) { case (x, y) =>
-            x + y.length
-          }
-          val rBytes = new Array[Byte](rLen)
-          var offset = 0
-          rowBytes.foreach { x =>
-            System.arraycopy(x, 0, rBytes, offset, x.length)
-            offset += x.length
-          }
-          rBytes
-        } else {
-          val rBytes = rkIdxedFields.map { case (x, y) =>
-            SHCDataTypeFactory.create(y).toBytes(row(x))
-          }
-          rBytes(0)
-        }
-      val put = timestamp.fold(new Put(rBytes))(new Put(rBytes, _))
-      colsIdxedFields.foreach { case (x, y) =>
-        val rowValue = SHCDataTypeFactory.create(y).toBytes(row(x))
-        if (rowValue != null) {
-          put.addColumn(
-            coder.toBytes(y.cf),
-            coder.toBytes(y.col),
-            rowValue
-          )
-        }
-      }
-      count += 1
-      (new ImmutableBytesWritable, put)
-    }
-
-    rdd.mapPartitions(iter => {
-      SHCCredentialsManager.processShcToken(serializedToken)
-      iter.map(convertToPut)
-    }).saveAsNewAPIHadoopDataset(jobConfig)
-  }
-
   override def insert(data: DataFrame, overwrite: Boolean): Unit = {
     hbaseConf.set(TableOutputFormat.OUTPUT_TABLE, s"${catalog.namespace}:${catalog.name}")
     val job = Job.getInstance(hbaseConf)
@@ -262,9 +190,7 @@ case class HBaseRelation(
   }
 
   private def convertToPut(rkFields: Seq[Field] )(row: Row): (ImmutableBytesWritable, Put) = {
-    val rkIdxedFields = rkFields.map{ case x =>
-      (schema.fieldIndex(x.colName), x)
-    }
+    val rkIdxedFields = rkFields.map(x => (schema.fieldIndex(x.colName), x))
     val colsIdxedFields = schema
       .fieldNames
       .partition( x => rkFields.map(_.colName).contains(x))
@@ -276,9 +202,7 @@ case class HBaseRelation(
       if (isComposite()) {
         val rowBytes = coder.encodeCompositeRowKey(rkIdxedFields, row)
 
-        val rLen = rowBytes.foldLeft(0) { case (x, y) =>
-          x + y.length
-        }
+        val rLen = rowBytes.foldLeft(0) { case (x, y) => x + y.length }
         val rBytes = new Array[Byte](rLen)
         var offset = 0
         rowBytes.foreach { x =>
@@ -286,11 +210,8 @@ case class HBaseRelation(
           offset += x.length
         }
         rBytes
-      } else {
-        rkIdxedFields.map { case (x, y) =>
-          SHCDataTypeFactory.create(y).toBytes(row(x))
-        }.head
-      }
+      } else rkIdxedFields.map { case (x, y) => SHCDataTypeFactory.create(y).toBytes(row(x)) }.head
+
 
     // add timestamp if defined for whole table
     val put: Put = timestamp.fold(new Put(rBytes))(new Put(rBytes, _))
@@ -406,9 +327,18 @@ class SerializableConfiguration(@transient var value: Configuration) extends Ser
 }
 
 object HBaseRelation {
+
+  object Restrictive {
+    val none = "NONE"
+    val family = "FAMILY"
+    val column = "COLUMN"
+  }
+
+  val RESTRICTIVE = "restrictive"
   val TIMESTAMP = "timestamp"
   val MIN_STAMP = "minStamp"
   val MAX_STAMP = "maxStamp"
+  val MERGE_TO_LATEST = "mergeToLatest"
   val MAX_VERSIONS = "maxVersions"
   val HBASE_CONFIGURATION = "hbaseConfiguration"
   // HBase configuration file such as HBase-site.xml, core-site.xml

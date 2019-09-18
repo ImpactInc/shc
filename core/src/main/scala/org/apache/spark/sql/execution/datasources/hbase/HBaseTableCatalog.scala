@@ -90,19 +90,19 @@ case class Field(
 
   // converter from avro to catalyst structure
   lazy val avroToCatalyst: Option[Any => Any] = {
-    schema.map(SchemaConverters.createConverterToSQL(_))
+    schema.map(SchemaConverters.createConverterToSQL)
   }
 
   // converter from catalyst to avro
-  lazy val catalystToAvro: (Any) => Any ={
+  lazy val catalystToAvro: Any => Any ={
     SchemaConverters.createConverterToAvro(dt, colName, "recordNamespace")
   }
 
-  val dt =
+  val dt: DataType =
     if (avroSchema.isDefined)
-      schema.map{ x => SchemaConverters.toSqlType(x).dataType }.get
+      schema.map(SchemaConverters.toSqlType(_).dataType).get
     else
-      sType.map(CatalystSqlParser.parseDataType(_)).get
+      sType.map(CatalystSqlParser.parseDataType).get
 
   val length: Int = {
     if (len == -1) {
@@ -132,10 +132,10 @@ case class Field(
 // The row key definition, with each key refer to the col defined in Field, e.g.,
 // key1:key2:key3
 case class RowKey(k: String) {
-  val keys = k.split(":")
+  val keys: Array[String] = k.split(":")
   var fields: Seq[Field] = _
   var varLength = false
-  def length = {
+  def length: Int = {
     val tmp = fields.foldLeft(0) { case (x, y) =>
       val yLen = if (y.length == -1) {
         MaxLength
@@ -150,13 +150,13 @@ case class RowKey(k: String) {
 
 // The map between the column presented to Spark and the HBase field
 case class SchemaMap(map: mutable.LinkedHashMap[String, Field]) {
-  def toFields = map.map { case (name, field) =>
+  def toFields: Seq[StructField] = map.map { case (name, field) =>
     StructField(name, field.dt)
   }.toSeq
 
-  def fields = map.values
+  def fields: Iterable[Field] = map.values
 
-  def getField(name: String) = map(name)
+  def getField(name: String): Field = map(name)
 }
 
 // The definition of HBase and Relation relation schema
@@ -170,23 +170,25 @@ case class HBaseTableCatalog(
                               numReg: Int
                             ) extends Logging {
   def toDataType = StructType(sMap.toFields)
-  def getField(name: String) = sMap.getField(name)
+  def getField(name: String): Field = sMap.getField(name)
   def getRowKey: Seq[Field] = row.fields
-  def getPrimaryKey= row.keys(0)
-  def getColumnFamilies = {
+  def getPrimaryKey: String = row.keys(0)
+  def getColumnFamilies: Seq[String] = {
     sMap.fields.map(_.cf).filter(_ != HBaseTableCatalog.rowKey).toSeq.distinct
   }
 
-  val shcTableCoder = SHCDataTypeFactory.create(tCoder)
+  //this is required to read fromBytes column families and qualifiers
+  val stringField: Field = Field("", "", "", tCoder, Some("string"))
+  val shcTableCoder: SHCDataType = SHCDataTypeFactory.create(stringField)
 
-  def initRowKey() = {
+  def initRowKey(): Unit = {
     val fields = sMap.fields.filter(_.cf == HBaseTableCatalog.rowKey)
     row.fields = row.keys.flatMap(n => fields.find(_.col == n))
 
     // If the tCoder is PrimitiveType, We only allowed there is one key at the end
     // that is determined at runtime.
     if (tCoder == SparkHBaseConf.PrimitiveType) {
-      if (row.fields.reverse.tail.filter(_.length == -1).isEmpty) {
+      if (!row.fields.reverse.tail.exists(_.length == -1)) {
         var start = 0
         row.fields.foreach { f =>
           f.start = start
@@ -202,7 +204,7 @@ case class HBaseTableCatalog(
   }
   initRowKey()
 
-  def validateCatalogDef() = {
+  def validateCatalogDef(): Unit = {
     if (!shcTableCoder.isRowKeySupported()) {
       throw new UnsupportedOperationException(s"$tCoder does not support row key, and can not be " +
         s"the table coder.")
