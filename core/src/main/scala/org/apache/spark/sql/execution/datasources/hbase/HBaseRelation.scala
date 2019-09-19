@@ -75,6 +75,8 @@ case class HBaseRelation(
   val minStamp: Option[Long] = parameters.get(HBaseRelation.MIN_STAMP).map(_.toLong)
   val maxStamp: Option[Long] = parameters.get(HBaseRelation.MAX_STAMP).map(_.toLong)
   val maxVersions: Option[Int] = parameters.get(HBaseRelation.MAX_VERSIONS).map(_.toInt)
+  val restrictive: String = parameters.getOrElse(HBaseRelation.RESTRICTIVE, HBaseRelation.Restrictive.column)
+  val mergeToLatest: Boolean = parameters.get(HBaseRelation.MERGE_TO_LATEST).fold(true)(_.toBoolean)
 
 
   val catalog = HBaseTableCatalog(parameters)
