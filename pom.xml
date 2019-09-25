@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!--
   ~ Licensed to the Apache Software Foundation (ASF) under one or more
   ~ contributor license agreements.  See the NOTICE file distributed with
@@ -14,12 +14,7 @@
   ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
-  -->
-
-<!-- BUILD:   mvn -e -T1C -Phbase,hadoop-2.4  -Dhadoop.version=2.4.0 -DskipTests  clean package install -->
-
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  --><!-- BUILD:   mvn -e -T1C -Phbase,hadoop-2.4  -Dhadoop.version=2.4.0 -DskipTests  clean package install --><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.apache</groupId>
@@ -35,7 +30,7 @@
 
   <properties>
     <maven.version>3.5.4</maven.version>
-    <spark.version>2.4.0</spark.version>
+    <spark.version>2.4.3</spark.version>
     <hbase.version>2.0.4</hbase.version>
     <phoenix.version>5.0.0-HBase-2.0</phoenix.version>
     <test_classpath_file>${project.build.directory}/spark-test-classpath.txt</test_classpath_file>
@@ -179,5 +174,4 @@
       </activation>
     </profile>
   </profiles>
-
 </project>
