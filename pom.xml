@@ -35,8 +35,8 @@
 
   <properties>
     <spark.version>2.4.3</spark.version>
-    <hbase.version>2.0.4</hbase.version>
-    <phoenix.version>5.0.0-HBase-2.0</phoenix.version>
+    <hbase.version>1.2.0-cdh5.13.1</hbase.version>
+    <phoenix.version>4.9.0-HBase-1.1</phoenix.version>
     <test_classpath_file>${project.build.directory}/spark-test-classpath.txt</test_classpath_file>
     <java.version>1.8</java.version>
     <scala.version>2.11.12</scala.version>
