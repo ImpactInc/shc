@@ -18,6 +18,7 @@
 package org.apache.spark.sql.execution.datasources.hbase
 
 import java.io._
+
 import scala.util.control.NonFatal
 import scala.xml.XML
 import org.json4s.DefaultFormats
@@ -25,9 +26,9 @@ import org.json4s.jackson.JsonMethods._
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.client.Put
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable
-import org.apache.hadoop.hbase.mapreduce.TableOutputFormat
 import org.apache.hadoop.hbase.util.Bytes
 import org.apache.hadoop.hbase._
+import org.apache.hadoop.hbase.mapreduce.TableOutputFormat
 import org.apache.hadoop.mapreduce.Job
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.sources._

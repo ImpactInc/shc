@@ -125,7 +125,8 @@ public class AvroKeySourceSuite {
     // Write some data directly to it
     GenericRecord record1 = getRecord(KEY1, 5);
     GenericRecord record2 = getRecord(KEY2, 7);
-    HTable testTable = new HTable(hbase.getConf(), TABLE_NAME);
+//    HTable testTable = new HTable(hbase.getConf(), TABLE_NAME);
+    HTable testTable = null;
     putRecord(testTable, record1);
     putRecord(testTable, record2);
   }

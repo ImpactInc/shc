@@ -28,22 +28,22 @@
   </parent>
   <groupId>com.hortonworks</groupId>
   <artifactId>shc</artifactId>
-  <version>1.2.0-2.2.1-s_2.11</version>
+  <version>1.2.0-2.4.3-s_2.11</version>
   <packaging>pom</packaging>
   <name>HBase Spark Connector Project Parent POM</name>
   <url>https://github.com/hortonworks-spark/shc</url>
 
   <properties>
-    <bigtable.version>1.2.0</bigtable.version>
-    <spark.version>2.2.1</spark.version>
-    <hbase.version>1.2.0</hbase.version>
-    <phoenix.version>4.9.0-HBase-1.1</phoenix.version>
+    <bigtable.version>1.12.0</bigtable.version>
+    <spark.version>2.4.3</spark.version>
+    <hbase.version>2.1.0</hbase.version>
+    <phoenix.version>5.0.0-HBase-2.0</phoenix.version>
     <test_classpath_file>${project.build.directory}/spark-test-classpath.txt</test_classpath_file>
     <java.version>1.8</java.version>
     <scala.version>2.11.12</scala.version>
     <scala.macros.version>2.1.0</scala.macros.version>
     <scala.binary.version>2.11</scala.binary.version>
-    <avro.version>1.8.0</avro.version>
+    <avro.version>1.8.2</avro.version>
     <codahale.metrics.version>3.0.0</codahale.metrics.version>
     <codehaus.jackson.version>1.8.8</codehaus.jackson.version>
 
@@ -181,7 +181,7 @@
     </dependency>
     <dependency>
       <groupId>com.google.cloud.bigtable</groupId>
-      <artifactId>bigtable-hbase-1.x-hadoop</artifactId>
+      <artifactId>bigtable-hbase-2.x-hadoop</artifactId>
       <version>${bigtable.version}</version>
     </dependency>
   </dependencies>

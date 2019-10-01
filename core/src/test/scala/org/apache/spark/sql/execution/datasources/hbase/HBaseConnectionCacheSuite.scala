@@ -23,11 +23,10 @@ package org.apache.spark.sql.execution.datasources.hbase
 import java.util.concurrent.ExecutorService
 
 import org.scalatest.FunSuite
-import scala.util.Random
 
+import scala.util.Random
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.hbase.client.{BufferedMutator, Table, RegionLocator,
-  Connection, BufferedMutatorParams, Admin}
+import org.apache.hadoop.hbase.client.{Admin, BufferedMutator, BufferedMutatorParams, Connection, RegionLocator, Table, TableBuilder}
 import org.apache.hadoop.hbase.{HConstants, TableName}
 
 class HBaseConnectionKeyMocker(val confId: Int) extends HBaseConnectionKey(null) {
@@ -55,9 +54,11 @@ class ConnectionMocker extends Connection {
 
   def getConfiguration: Configuration = null
 
-  def getTable(tableName: TableName): Table = null
+  def getTableBuilder(tableName: TableName, executorService: ExecutorService): TableBuilder = null
 
-  def getTable(tableName: TableName, pool: ExecutorService): Table = null
+  override def getTable(tableName: TableName): Table = null
+
+  override def getTable(tableName: TableName, pool: ExecutorService): Table = null
 
   def getBufferedMutator(params: BufferedMutatorParams): BufferedMutator = null
 
