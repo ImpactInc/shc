@@ -1,5 +1,4 @@
 apply plugin: 'java'
-apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: 'maven-publish'
 
@@ -49,25 +48,10 @@ dependencies {
     testCompile group: 'org.scalatest', name: 'scalatest_2.11', version: '2.2.1'
 }
 
-// Force scala joint compilation
-sourceSets.main.scala.srcDirs = ["core/src/main/scala"]
-sourceSets.test.scala.srcDirs = ["core/src/test/scala"]
-sourceSets.main.java.srcDirs = []
-sourceSets.test.java.srcDirs = []
-
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = "sources"
-
-    from(sourceSets.main.scala) {
-        into "core/src/main/scala"
-    }
-}
-
 publishing {
     publications {
         maven(MavenPublication) {
             from components.java
-            artifact sourcesJar
         }
     }
     repositories {
