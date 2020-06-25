@@ -1,8 +1,13 @@
 apply plugin: 'java'
+apply plugin: 'scala'
 apply plugin: 'maven'
 apply plugin: 'maven-publish'
 
 project.group = 'com.impact'
+def buildNumber = System.getenv("BUILD_NUMBER") ?: System.getProperty("BUILD_NUMBER")
+def prefix = "bigtable-"
+project.version = prefix + buildNumber
+System.setProperty("version", project.version)
 
 description = """HBase Spark Connector Project Parent POM"""
 
@@ -11,12 +16,6 @@ targetCompatibility = 1.8
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
-
-// Force scala joint compilation
-sourceSets.main.scala.srcDirs = ["core/src/main/scala"]
-sourceSets.test.scala.srcDirs = ["core/src/test/scala"]
-sourceSets.main.java.srcDirs = []
-sourceSets.test.java.srcDirs = []
 
 repositories {
 
@@ -50,16 +49,14 @@ dependencies {
     testCompile group: 'org.scalatest', name: 'scalatest_2.11', version: '2.2.1'
 }
 
-generateReleaseVersions() {
-    def buildNumber = System.getenv("BUILD_NUMBER") ?: System.getProperty("BUILD_NUMBER")
-    def prefix = "bigtable-"
-    project.version = prefix + buildNumber
-    System.setProperty("version", project.version)
-}
-generateReleaseVersion()
+// Force scala joint compilation
+sourceSets.main.scala.srcDirs = ["core/src/main/scala"]
+sourceSets.test.scala.srcDirs = ["core/src/test/scala"]
+sourceSets.main.java.srcDirs = []
+sourceSets.test.java.srcDirs = []
 
 task sourcesJar(type: Jar, dependsOn: classes) {
-    archiveClassifier = "sources"
+    classifier = "sources"
 
     from(sourceSets.main.scala) {
         into "core/src/main/scala"
