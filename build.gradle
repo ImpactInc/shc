@@ -2,8 +2,8 @@ apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'maven-publish'
 
-group = 'com.ir'
-version = '1.2.0-2.2-s_2.11'
+group = 'com.impact'
+name = 'shc-core-1.12.0-2.4.3-s_2.11'
 
 description = """HBase Spark Connector Project Parent POM"""
 
@@ -13,7 +13,11 @@ tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
-
+// Force scala joint compilation
+sourceSets.main.scala.srcDirs = ["core/src/main/scala"]
+sourceSets.test.scala.srcDirs = ["core/src/test/scala"]
+sourceSets.main.java.srcDirs = []
+sourceSets.test.java.srcDirs = []
 
 repositories {
 
@@ -46,15 +50,33 @@ dependencies {
     testCompile group: 'org.apache.hbase', name: 'hbase-testing-util', version: '1.2.0-cdh5.13.1'
     testCompile group: 'org.scalatest', name: 'scalatest_2.11', version: '2.2.1'
 }
+
+generateReleaseVersions() {
+    def buildNumber = System.getenv("BUILD_NUMBER") ?: System.getProperty("BUILD_NUMBER")
+    def prefix = "bigtable-"
+    project.version = prefix + buildNumber
+    System.setProperty("version", project.version)
+}
+generateReleaseVersion()
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    archiveClassifier = "sources"
+
+    from(sourceSets.main.scala) {
+        into "core/src/main/scala"
+    }
+}
+
 publishing {
     publications {
         maven(MavenPublication) {
             from components.java
+            artifact sourcesJar
         }
     }
     repositories {
         maven {
-            url property('nexusThirdPartyUrl')
+            url property('nexusAggregateUrl')
             credentials {
                 username property('nexusUsername')
                 password property('nexusPassword')

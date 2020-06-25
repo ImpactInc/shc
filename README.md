@@ -202,7 +202,7 @@ The connector fully supports all the avro schemas. Users can use either a comple
          
          
 ## Publishing
-There is a Jenkins job to publish shc jar to nexus thirdparty url. To publish a shc jar, simply go to the job, click release and input the branch you want to release from and a custom version number if applicable.
+There is a Jenkins job to publish shc jar to nexus thirdparty url. To publish a shc jar, simply go to the alpaqa-publish-shc job, click release and input the branch you want to release from and a custom version number if applicable.
 
 [Job Link](https://data-jenkins-ci.gcp.inf-impact.net/view/Scoring/job/alpaqa-publish-shc/)
 
