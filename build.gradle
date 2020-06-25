@@ -4,7 +4,7 @@ apply plugin: 'maven-publish'
 
 project.group = 'com.impact'
 def buildNumber = System.getenv("BUILD_NUMBER") ?: System.getProperty("BUILD_NUMBER")
-def prefix = "bigtable_"
+def prefix = "bigtable-"
 project.version = prefix + buildNumber
 System.setProperty("version", project.version)
 
@@ -56,7 +56,7 @@ publishing {
     }
     repositories {
         maven {
-            url property('nexusAggregateUrl')
+            url property('nexusThirdPartyUrl')
             credentials {
                 username property('nexusUsername')
                 password property('nexusPassword')
