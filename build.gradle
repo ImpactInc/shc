@@ -2,8 +2,7 @@ apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'maven-publish'
 
-group = 'com.impact'
-name = 'shc-core-1.12.0-2.4.3-s_2.11'
+project.group = 'com.impact'
 
 description = """HBase Spark Connector Project Parent POM"""
 
