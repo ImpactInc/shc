@@ -4,7 +4,7 @@ apply plugin: 'maven-publish'
 
 project.group = 'com.impact'
 def buildNumber = System.getenv("BUILD_NUMBER") ?: System.getProperty("BUILD_NUMBER")
-def prefix = "bigtable-"
+def prefix = "bigtable_"
 project.version = prefix + buildNumber
 System.setProperty("version", project.version)
 
