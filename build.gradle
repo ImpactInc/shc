@@ -1,6 +1,7 @@
 apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'maven-publish'
+apply plugin: 'scala'
 
 project.group = 'com.impact'
 def buildNumber = System.getenv("BUILD_NUMBER") ?: System.getProperty("BUILD_NUMBER")
@@ -15,6 +16,12 @@ targetCompatibility = 1.8
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
+
+// Force scala joint compilation
+sourceSets.main.scala.srcDirs = ["core/src/main/scala"]
+sourceSets.test.scala.srcDirs = ["core/src/test/scala"]
+sourceSets.main.java.srcDirs = []
+sourceSets.test.java.srcDirs = []
 
 repositories {
 
