@@ -22,13 +22,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.impact</groupId>
-    <artifactId>shc-1.2.0-2.2-s_2.11</artifactId>
-    <version>15</version>
+    <groupId>org.apache</groupId>
+    <artifactId>apache</artifactId>
+    <version>14</version>
   </parent>
-  <groupId>com.hortonworks</groupId>
-  <artifactId>shc</artifactId>
-  <version>1.2.0-2.2-s_2.11</version>
+  <groupId>com.impact</groupId>
+  <artifactId>shc-1.2.0-2.2-s_2.11</artifactId>
+  <version>15</version>
   <packaging>pom</packaging>
   <name>HBase Spark Connector Project Parent POM</name>
   <url>https://github.com/hortonworks-spark/shc</url>
