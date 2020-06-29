@@ -22,19 +22,35 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>com.hortonworks</groupId>
-    <artifactId>shc</artifactId>
-    <version>1.2.0-2.2-s_2.11</version>
-    <relativePath>../pom.xml</relativePath>
+    <groupId>com.impact</groupId>
+    <artifactId>shc-1.2.0-2.2-s_2.11</artifactId>
+    <version>15</version>
   </parent>
+
+  <distributionManagement>
+    <snapshotRepository>
+      <id>nexus-releases</id>
+      <url>https://ir-nexus.impactradius.net/repository/releases/</url>
+    </snapshotRepository>
+  </distributionManagement>
 
   <artifactId>shc-core</artifactId>
   <version>1.2.0-2.2-s_2.11</version>
   <packaging>jar</packaging>
   <name>HBase Spark Connector Project Core</name>
 
+  <!-- Deploy to Nexus -->
+
   <build>
-    <!-- Scalatest runs all Scala tests -->
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>2.8.2</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
     <plugins>
       <plugin>
         <groupId>org.scalatest</groupId>
@@ -87,6 +103,10 @@
             </fileset>
           </filesets>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-deploy-plugin</artifactId>
       </plugin>
     </plugins>
   </build>

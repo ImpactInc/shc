@@ -37,15 +37,15 @@ dependencies {
     compile group: 'org.apache.spark', name: 'spark-sql_2.11', version: '2.2.0'
     compile(group: 'org.apache.hbase', name: 'hbase-server', version: '1.2.0-cdh5.13.1') {
         exclude(module: 'asm')
-        exclude(module: 'netty')
-        exclude(module: 'netty')
+        exclude(group: 'org.jboss.netty', module: 'netty')
+        exclude(group: 'io.netty', module: 'netty')
         exclude(module: 'commons-logging')
         exclude(module: 'jruby-complete')
     }
     compile(group: 'org.apache.hbase', name: 'hbase-common', version: '1.2.0-cdh5.13.1') {
         exclude(module: 'asm')
-        exclude(module: 'netty')
-        exclude(module: 'netty')
+        exclude(group: 'org.jboss.netty', module: 'netty')
+        exclude(group: 'io.netty', module: 'netty')
         exclude(module: 'commons-logging')
         exclude(module: 'jruby-complete')
     }
