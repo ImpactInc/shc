@@ -35,7 +35,7 @@
 
   <distributionManagement>
     <repository>
-      <id>${repoid}</id>
+      <id>ImpactNexus</id>
       <name>Nexus Releases</name>
       <url>https://ir-nexus.impactradius.net/repository/releases/</url>
     </repository>
