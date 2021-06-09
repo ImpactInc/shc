@@ -3,8 +3,8 @@
   <servers>
     <server>
       <id>ImpactNexus</id>
-      <username>{env.CI_MAVEN_USERNAME}</username>
-      <password>{env.CI_MAVEN_PASSWORD}</password>
+      <username>{ci.maven.username}</username>
+      <password>{ci.maven.password}</password>
     </server>
   </servers>
 </settings>
