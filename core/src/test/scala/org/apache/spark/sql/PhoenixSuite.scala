@@ -58,6 +58,10 @@ object PRecord {
   }
 }
 
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
+
+@RunWith(classOf[JUnitRunner])
 class PhoenixSuite extends SHC with Logging {
   override def catalog = s"""{
                     |"table":{"namespace":"default", "name":"phoenixTable",

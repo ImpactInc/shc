@@ -25,7 +25,10 @@ import org.apache.avro.generic.GenericData
 import org.apache.spark.sql.execution.datasources.hbase.Logging
 import org.apache.spark.sql.execution.datasources.hbase.types.AvroSerde
 import org.apache.spark.sql.execution.datasources.hbase.HBaseTableCatalog
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
+@RunWith(classOf[JUnitRunner])
 case class AvroHBaseKeyRecord(col0: Array[Byte], col1: Array[Byte])
 
 object AvroHBaseKeyRecord {

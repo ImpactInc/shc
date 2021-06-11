@@ -31,6 +31,10 @@ import org.apache.hadoop.hbase.{TableName, HBaseTestingUtility}
 import org.apache.spark.sql.execution.datasources.hbase.Logging
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
 
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
+
+@RunWith(classOf[JUnitRunner])
 class HBaseTestSuite extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
   private[spark] var htu = HBaseTestingUtility.createLocalHTU()
   private[spark] var tableName: Array[Byte] = Bytes.toBytes("t1")

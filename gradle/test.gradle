@@ -1,0 +1,29 @@
+apply plugin: "jacoco"
+
+test {
+    jvmArgs project.gradle.startParameter.systemPropertiesArgs.entrySet().collect { "-D${it.key}=${it.value}" } + ['-Xms1024m', '-Xmx2048m']
+    include '**/*Test*.class'
+    include '**/*Suite*.class'
+    jacoco {
+        destinationFile = file("$buildDir/jacoco/test.exec")
+        classDumpDir = file("$buildDir/build/classes/test")
+    }
+}
+
+/*
+ * Jacoco Code Coverage Plugin
+ */
+jacocoTestReport {
+    group = "Reporting"
+    reports {
+        xml.enabled = true
+        html.enabled = true
+        html.destination = new File("${buildDir}/reports/coverage")
+    }
+    doLast {
+        def reportFile = new File("${buildDir}/reports/coverage/index.html")
+        if (reportFile.exists()) {
+            println "Jacoco Report at: ${reportFile.toURI()}"
+        }
+    }
+}

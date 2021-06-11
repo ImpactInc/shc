@@ -17,7 +17,6 @@
 package org.apache.spark.sql
 
 import scala.util.Random
-
 import java.nio.ByteBuffer
 
 import org.apache.avro.Schema
@@ -25,7 +24,10 @@ import org.apache.avro.generic.GenericData
 import org.apache.spark.sql.execution.datasources.hbase.Logging
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
 import org.apache.spark.sql.execution.datasources.hbase.types._
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
+@RunWith(classOf[JUnitRunner])
 class AvroRecordSuite extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
 
   test("avro to schema converterBasic setup") {

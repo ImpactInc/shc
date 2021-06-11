@@ -24,6 +24,10 @@ import org.apache.spark.sql.execution.datasources.hbase.Logging
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
 import org.apache.spark.sql.execution.datasources.hbase.HBaseTableCatalog
 
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
+
+@RunWith(classOf[JUnitRunner])
 class CatalogSuite  extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll  with Logging{
   def catalog = s"""{
             |"table":{"namespace":"default", "name":"table1", "tableCoder":"PrimitiveType"},

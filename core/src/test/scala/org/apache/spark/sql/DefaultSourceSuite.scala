@@ -65,6 +65,10 @@ object HBaseRecord {
   }
 }
 
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
+
+@RunWith(classOf[JUnitRunner])
 class DefaultSourceSuite extends SHC with Logging {
 
   def withCatalog(cat: String, options: Map[String, String] = Map.empty): DataFrame = {

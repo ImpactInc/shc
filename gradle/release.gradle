@@ -1,0 +1,45 @@
+import static com.impact.scoring.gradle.Build.*
+import com.impact.scoring.gradle.*
+
+task release(group: "release", description: "Releases a tag of master") {
+    doFirst {
+        def lastTag = executeSilent("git for-each-ref --sort=-taggerdate --count=1 --format '%(tag)' refs/tags", new StringBuffer())
+        println("Last release was: $lastTag")
+        def commitsByTag = Git.getCommitsByTag(lastTag, "HEAD")
+        def subject = "${new Date().format('yyyy-MM-dd')} Partner r${revision}"
+        def body = "### Improvements"
+        commitsByTag.each {
+            def commit = it.value
+            commit.each {
+                def id = it.key.contains("-") ? it.key.split("-")[1] : it.key
+                if (it.key.startsWith("REFACTOR-")) {
+                    id = "[${it.key}](https://github.com/ImpactInc/scoring-web/issues/${id})"
+                } else if (it.key.startsWith("SCORE-")) {
+                    id = "[${it.key}](https://estalea.atlassian.net/browse/${it.key})"
+                }
+                body += """\n- ${id}: ${it.value}"""
+            }
+        }
+        execute("git tag r${revision} -m '${subject}' -m '${body.replaceAll("'", "")}'")
+        execute("git push origin r${revision}")
+    }
+}
+
+task unrelease(group: "release", description: "Deletes a release tag") {
+    doFirst {
+        requireParams(project, "tag")
+        def tagStr = null
+        if (project.hasProperty('tag')) {
+            tagStr = tag
+        }
+        println("WARNING!!!  There will be no history of this release '$tagStr' on github")
+        println("Are you sure? (Y/n): ")
+        def yesNo = new BufferedReader(new InputStreamReader(System.in)).readLine().trim()
+        if ("Y".equalsIgnoreCase(yesNo)) {
+            execute("git push --delete origin $tagStr")
+            execute("git tag --delete $tagStr")
+        } else {
+            println("Aborted.")
+        }
+    }
+}

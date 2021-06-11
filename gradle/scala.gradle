@@ -1,0 +1,22 @@
+apply plugin: "scala"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+// Force scala joint compilation
+sourceSets.main.scala.srcDir "src/main/java"
+sourceSets.test.scala.srcDir "src/test/java"
+// Disable the Javac compiler by forcing joint compilation by scalac
+sourceSets.main.java.srcDirs = []
+sourceSets.test.java.srcDirs = []
+
+ScalaCompileOptions.metaClass.daemonServer = true
+ScalaCompileOptions.metaClass.fork = false
+ScalaCompileOptions.metaClass.useAnt = false
+ScalaCompileOptions.metaClass.useCompileDaemon = false
+ScalaCompileOptions.metaClass.additionalParameters = ["-feature", "-Yinline-warnings"]
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.forkOptions.with {
+        jvmArgs = ['-Xss8m', '-Xms512m', '-Xmx2048m', '-XX:ReservedCodeCacheSize=128m', '-ea']
+    }
+}

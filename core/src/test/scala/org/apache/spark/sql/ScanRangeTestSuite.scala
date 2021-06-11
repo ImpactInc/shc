@@ -28,6 +28,10 @@ import org.apache.spark.sql.execution.datasources.hbase
 import org.apache.spark.sql.execution.datasources.hbase.{Bound, ScanRange}
 import org.apache.spark.sql.types.BinaryType
 
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
+
+@RunWith(classOf[JUnitRunner])
 class ScanRangeTestSuite  extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
 
   implicit val order =  BinaryType.ordering

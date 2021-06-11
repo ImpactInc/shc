@@ -64,6 +64,10 @@ object AvroHBaseRecord {
   }
 }
 
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
+
+@RunWith(classOf[JUnitRunner])
 class AvroSourceSuite extends SHC with Logging{
 
   // 'catalog' is used when saving data to HBase

@@ -1,0 +1,18 @@
+jar {
+    zip64 true
+    duplicatesStrategy "exclude"
+//    manifest {
+//        attributes("Revision": revision)
+//        attributes("Branch": branch)
+//        attributes("Commit": commit)
+//    }
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
+}
+
+ext.oneJar = { proj, scope ->
+    project(":${proj.name}") {
+        jar {
+            from configurations[scope].collect { it.isDirectory() ? it : zipTree(it) }
+        }
+    }
+}
