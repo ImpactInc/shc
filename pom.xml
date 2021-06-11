@@ -34,11 +34,11 @@
   <url>https://github.com/hortonworks-spark/shc</url>
 
   <distributionManagement>
-    <repository>
+    <snapshotRepository>
       <id>ImpactNexus</id>
       <name>Nexus Releases</name>
-      <url>https://ir-nexus.impactradius.net/repository/releases/</url>
-    </repository>
+      <url>https://ir-nexus.impactradius.net/repository/snapshots/</url>
+    </snapshotRepository>
   </distributionManagement>
 
   <properties>
@@ -109,24 +109,6 @@
           <version>2.8.2</version>
           <configuration>
             <skip>false</skip>
-          </configuration>
-        </plugin>
-        <plugin>
-          <groupId>org.sonatype.plugins</groupId>
-          <artifactId>nexus-staging-maven-plugin</artifactId>
-          <version>1.5.1</version>
-          <executions>
-            <execution>
-              <id>default-deploy</id>
-              <phase>deploy</phase>
-              <goals>
-                <goal>deploy</goal>
-              </goals>
-            </execution>
-          </executions>
-          <configuration>
-            <serverId>ImpactNexus</serverId>
-            <nexusUrl>https://ir-nexus.impactradius.net/repository/snapshots/</nexusUrl>
           </configuration>
         </plugin>
       </plugins>
