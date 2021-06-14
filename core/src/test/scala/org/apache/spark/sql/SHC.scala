@@ -32,7 +32,7 @@ import org.apache.spark.sql.execution.datasources.hbase.SparkHBaseConf
 import org.apache.spark.{SparkContext, SparkConf}
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FunSuite}
 
-class SHC  extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll  with Logging {
+class SHC  extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll with Logging {
   implicit class StringToColumn(val sc: StringContext) {
     def $(args: Any*): ColumnName = {
       new ColumnName(sc.s(args: _*))
