@@ -81,7 +81,6 @@ configure(subprojects.findAll { it.name != 'python' }) {
             mavenLocal()
         }
         maven { url property('nexusAggregateUrl') }
-        flatDir { dirs "$rootDir/deps/libs" }
     }
 
     configurations {

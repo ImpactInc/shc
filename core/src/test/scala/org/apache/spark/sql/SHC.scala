@@ -74,7 +74,7 @@ class SHC  extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll with 
 
   override def beforeAll() {
     val tempDir: File = Files.createTempDir
-    tempDir.deleteOnExit
+    tempDir.deleteOnExit()
     htu.startMiniCluster
     SparkHBaseConf.conf = htu.getConfiguration
     logInfo(" - minicluster started")
