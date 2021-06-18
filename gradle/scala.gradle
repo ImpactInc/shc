@@ -14,7 +14,7 @@ ScalaCompileOptions.metaClass.daemonServer = true
 ScalaCompileOptions.metaClass.fork = false
 ScalaCompileOptions.metaClass.useAnt = false
 ScalaCompileOptions.metaClass.useCompileDaemon = false
-ScalaCompileOptions.metaClass.additionalParameters = ["-feature", "-Yinline-warnings"]
+ScalaCompileOptions.metaClass.additionalParameters = ["-feature"]
 tasks.withType(ScalaCompile) {
     scalaCompileOptions.forkOptions.with {
         jvmArgs = ['-Xss8m', '-Xms512m', '-Xmx2048m', '-XX:ReservedCodeCacheSize=128m', '-ea']

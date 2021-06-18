@@ -29,11 +29,13 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.spark.sql.execution.datasources.hbase.HBaseTableCatalog;
 import org.apache.spark.sql.execution.datasources.hbase.SparkHBaseConf;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -61,6 +63,7 @@ public class AvroKeySourceSuite {
 
   @Before
   public void setUp() throws Exception {
+    System.out.println("Setting up server");
     hbase = hBaseTestingUtility.startMiniCluster();
     SparkHBaseConf.conf_$eq(hbase.getConf());
     sparkSession = SparkSession.builder()
@@ -85,8 +88,8 @@ public class AvroKeySourceSuite {
 
   @Test
   public void testAvroKey() throws Exception {
-    hBaseTestingUtility.createTable(TABLE_NAME, COLUMN_FAMILY);
-    writeDataToHBase(hbase);
+    Table table = hBaseTestingUtility.createTable(TABLE_NAME, COLUMN_FAMILY);
+    writeDataToHBase(table);
 
     // Assert contents look as expected.
     Dataset<Row> df = sparkSession.sqlContext().read()
@@ -112,7 +115,7 @@ public class AvroKeySourceSuite {
     assertEquals(7, rows[1].getStruct(1).getStruct(1).getInt(0));
   }
 
-  private static void putRecord(HTable table, GenericRecord object) throws Exception {
+  private static void putRecord(Table table, GenericRecord object) throws Exception {
     // The rowKey doesn't actually matter too much.
     byte[] keyBytes = avroEncoderFunc((GenericRecord) object.get("key"));
     byte[] recordBytes = avroEncoderFunc(object);
@@ -121,14 +124,13 @@ public class AvroKeySourceSuite {
     table.put(p);
   }
 
-  private static void writeDataToHBase(HBaseCluster hbase) throws Exception {
+  private static void writeDataToHBase(Table table) throws Exception {
     // Write some data directly to it
     GenericRecord record1 = getRecord(KEY1, 5);
     GenericRecord record2 = getRecord(KEY2, 7);
 //    HTable testTable = new HTable(hbase.getConf(), TABLE_NAME);
-    HTable testTable = null;
-    putRecord(testTable, record1);
-    putRecord(testTable, record2);
+    putRecord(table, record1);
+    putRecord(table, record2);
   }
 
   private static Map<String, String> getHBaseSourceOptions() {
