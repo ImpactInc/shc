@@ -7,8 +7,9 @@ allprojects {
     version = '1.0'
 }
 
-ext {
 
+
+ext {
     // Company libs
     dataCommonVer = "2.0.396-bcf27f5"
     identityVer = "1.0-beta"
