@@ -6,6 +6,9 @@ apply from: "$rootDir/gradle/test.gradle"
 apply from: "$rootDir/gradle/jar.gradle"
 
 
+group = "com.impact.scoring"
+customArtifactId = "shc-core-1.12.0-2.4.7-s_2.12"
+
 configurations {
     compileAndJar
     compile { extendsFrom compileAndJar }
@@ -73,7 +76,7 @@ apply plugin: "maven-publish"
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifactId = 'com.impact:shc-core-1.12.0-2.4.7-s_2.11'
+            artifactId = customArtifactId
             artifact jar
             artifact sourcesJar
         }
