@@ -74,7 +74,7 @@ apply plugin: "maven-publish"
 
 publishing {
     publications {
-        mavenJava(MavenPublication) {
+        maven(MavenPublication) {
             artifactId = "shc-core-1.12.0-2.4.7-s_2.12"
             artifact jar
             artifact sourcesJar
