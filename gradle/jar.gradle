@@ -1,11 +1,11 @@
 jar {
     zip64 true
     duplicatesStrategy "exclude"
-//    manifest {
+    manifest {
 //        attributes("Revision": revision)
 //        attributes("Branch": branch)
 //        attributes("Commit": commit)
-//    }
+    }
     exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
 }
 

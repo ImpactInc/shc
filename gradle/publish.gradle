@@ -12,15 +12,15 @@ task sourcesJar(type: Jar, dependsOn: classes) {
     from(project.sourceSets.main.allSource)
 }
 
-//task testJar(type: Jar, dependsOn: testClasses) {
-//    classifier = 'tests'
-//    from(sourceSets.test.output)
-//}
-//
-//task testSourcesJar(type: Jar, dependsOn: testClasses) {
-//    classifier = "test-sources"
-//    from(sourceSets.test.allJava)
-//}
+task testJar(type: Jar, dependsOn: testClasses) {
+    classifier = 'tests'
+    from(sourceSets.test.output)
+}
+
+task testSourcesJar(type: Jar, dependsOn: testClasses) {
+    classifier = "test-sources"
+    from(sourceSets.test.allJava)
+}
 
 publishing {
     publications {

@@ -4,10 +4,7 @@
 
 apply from: "$rootDir/gradle/test.gradle"
 apply from: "$rootDir/gradle/jar.gradle"
-//apply from: "$rootDir/gradle/publish.gradle"
 
-ext.customArtifactId = "com-impact-shc-core-1.12.0-2.4.7-s_2.12-bigtable"
-ext.customJarTask = jar
 
 configurations {
     compileAndJar
@@ -21,7 +18,7 @@ dependencies {
     implementation 'org.apache.spark:spark-sql_2.12:2.4.7'
     implementation('org.apache.hbase:hbase-server') {
         version {
-            strictly '2.1.4'
+            strictly "$hbaseVer"
         }
         exclude group: "org.jboss.netty", module: "netty"
         exclude group: 'asm', module: 'asm'
@@ -30,7 +27,7 @@ dependencies {
     }
     implementation('org.apache.hbase:hbase-common') {
         version {
-            strictly '2.1.4'
+            strictly "$hbaseVer"
         }
         exclude group: 'org.jboss.netty', module: 'netty'
         exclude group: 'asm', module: 'asm'
@@ -49,7 +46,7 @@ dependencies {
     }
     testImplementation('org.apache.hbase:hbase-testing-util') {
         version {
-            strictly '2.1.4'
+            strictly "$hbaseVer"
         }
     }
     implementation('org.apache.phoenix:phoenix-core:5.0.0-HBase-2.0') {
@@ -63,6 +60,33 @@ dependencies {
     implementation 'org.apache.avro:avro:1.8.2'
     implementation 'com.google.cloud.bigtable:bigtable-hbase-2.x-hadoop:1.12.0'
     testImplementation 'org.scalatest:scalatest_2.12:3.0.5'
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = "sources"
+    from(sourceSets.main.allSource)
+    from(project.sourceSets.main.allSource)
+}
+
+apply plugin: "maven-publish"
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'com.impact:shc-core-1.12.0-2.4.7-s_2.11'
+            artifact jar
+            artifact sourcesJar
+        }
+    }
+    repositories {
+        maven {
+            url "https://ir-nexus.impactradius.net/repository/snapshots/"
+            credentials {
+                username findProperty("nexusUsername")
+                password findProperty("nexusPassword")
+            }
+        }
+    }
 }
 
 oneJar(project, "compileAndJar")
